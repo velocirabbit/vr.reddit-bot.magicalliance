@@ -17,7 +17,7 @@ if not os.path.isfile('config_bot.py'):
     exit(1) #Or should this be sys.exit()?
     
 #Overhead stuff (create instance of reddit and login)
-user_agent = "MagicAlliance v0.1 by /u/iforgot120" #Change user agent string when saving test copy
+user_agent = "MagicAlliance v1.0 by /u/iforgot120" #Change user agent string when saving test copy
 r = praw.Reddit(user_agent=user_agent)
 r.login(REDDIT_USERNAME, REDDIT_PASS)
 
@@ -72,6 +72,7 @@ while True:
     #Looking at all new posts
     for comment in r.get_redditor(user_name='Schlossacre').get_comments('all', limit=get_limits):
         #List of strings with each sentence containing the word (if any)
+        num_replied_to = 0
         trick_sentences = find_trick_sentences(comment.body)
         my_reply = ""
         if okay_to_reply(comment, trick_sentences):
@@ -85,10 +86,15 @@ while True:
                     plural = ('tricks', 'NNS') in tokenized if not plural else plural
                     my_reply += "> " + sentence + "\n\n"
             my_reply += "Illusion" + ("s" if plural else "") + ", " + comment.author.name + ". " + ("Tricks are " if plural else "A trick is ") + a_trick_is[def_num]
+            comment.reply(my_reply)
+            
+            pprint("Comment ID: " + comment.id + "\n" + my_reply + "\n\n----------")
+            num_replied_to += 1
             comments_replied_to.append(comment.id)
             with open (os.path.join('docs', 'comments_replied_to.txt'), 'a') as f:
                 f.write(comment.id + '\n')
         #done_already += 1 if comment.id in comments_replied_to else 0
     #get_limits -= int(done_already / 2)
     #time_delay = (time_delay + twiddle) / 2
+    pprint("Number of comments replied to that cycle: " + num_replied_to)
     time.sleep(time_delay) #make sleep time larger once it's actually on a server
