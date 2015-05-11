@@ -1,6 +1,7 @@
 import time #Time module
 import re #Regular expressions module
 import os #Miscellaneous OS interface module
+import urllib.error #Python URL/HTTP errors class
 
 import nltk #Natural Language Toolkit
 import praw #Python Reddit API Wrapper module
@@ -17,7 +18,7 @@ if not os.path.isfile('config_bot.py'):
     exit(1) #Or should this be sys.exit()?
     
 #Overhead stuff (create instance of reddit and login)
-user_agent = "MagicAlliance v1.0 by /u/iforgot120" #Change user agent string when saving test copy
+user_agent = "MagicAlliance v1.2 by /u/iforgot120" #Change user agent string when saving test copy
 r = praw.Reddit(user_agent=user_agent)
 r.login(REDDIT_USERNAME, REDDIT_PASS)
 
@@ -64,18 +65,26 @@ def okay_to_reply(reddit_comment, trick_found):
         if not parented and not parent.is_root:
             grandparent = r.get_info(thing_id = parent.parent_id)
             parented = grandparent.id in comments_replied_to
-    return not commented and trick_found and not parented 
+    return not commented and trick_found and not parented
+    
+def try_reply(reddit_comment, trick_found):
+    try:
+        return okay_to_reply(reddit_comment, trick_found)
+    except urllib2.HTTPERROR:
+        time.sleep(time_delay)
+        try_reply(reddit_comment, trick_found)
     
 while True:
     #twiddle = 0
     #done_already = 0
     #Looking at all new posts
-    for comment in r.get_redditor(user_name='Schlossacre').get_comments('all', limit=get_limits):
+    for comment in r.get_comments('all', limit=get_limits):
         #List of strings with each sentence containing the word (if any)
         num_replied_to = 0
         trick_sentences = find_trick_sentences(comment.body)
         my_reply = ""
-        if okay_to_reply(comment, trick_sentences):
+        reply_okay = try_reply(comment, trick_sentences)
+        if reply_okay:
             #twiddle += 1
             plural = False
             for sentence in trick_sentences:
