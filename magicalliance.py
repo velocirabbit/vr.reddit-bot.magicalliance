@@ -103,7 +103,7 @@ while True:
             with open (os.path.join('docs', 'comments_replied_to.txt'), 'a') as f:
                 f.write(comment.id + '\n')
         #done_already += 1 if comment.id in comments_replied_to else 0
+        pprint("Number of comments replied to in that cycle: " + str(num_replied_to))
     #get_limits -= int(done_already / 2)
     #time_delay = (time_delay + twiddle) / 2
-    pprint("Number of comments replied to in that cycle: " + str(num_replied_to))
     time.sleep(time_delay) #make sleep time larger once it's actually on a server
