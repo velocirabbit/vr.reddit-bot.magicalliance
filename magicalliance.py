@@ -19,7 +19,15 @@ if not os.path.isfile('config_bot.py'):
     
 #Overhead stuff (create instance of reddit and login)
 user_agent = "MagicAlliance v1.2 by /u/iforgot120" #Change user agent string when saving test copy
-r = praw.Reddit(user_agent=user_agent)
+
+def new_reddit(user_agent):
+    try:
+        return praw.Reddit(user_agent = user_agent)
+    except urllib.error.HTTPERROR:
+        time.sleep(time_delay)
+        return new_reddit(user_agent)
+
+r = new_reddit(user_agent = user_agent)
 r.login(REDDIT_USERNAME, REDDIT_PASS)
 
 #If a_trick_is.txt isn't in the folder
@@ -73,7 +81,7 @@ def try_reply(reddit_comment, trick_found):
     except urllib.error.HTTPERROR:
         time.sleep(time_delay)
         r.send_message('iforgot120', 'MagicAlliance has encountered an HTTPERROR', 'Check to see if it\'s shut down or something.')
-        try_reply(reddit_comment, trick_found)
+        return try_reply(reddit_comment, trick_found)
     
 while True:
     #twiddle = 0
