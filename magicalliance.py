@@ -1,13 +1,13 @@
 import time #Time module
 import re #Regular expressions module
 import os #Miscellaneous OS interface module
+import urllib.request #Python URL/HTTP errors class
 
 import nltk #Natural Language Toolkit
 import praw #Python Reddit API Wrapper module
 import numpy #Numerical Python
 
 from config_bot import *
-from urllib.error import * #Python URL/HTTP errors class
 from nltk import word_tokenize
 from pprint import pprint #pprint method from PrettyPrint module
 from random import randint #to select a random "definition" of what a trick is
@@ -18,17 +18,25 @@ if not os.path.isfile('config_bot.py'):
     exit(1) #Or should this be sys.exit()?
     
 #Overhead stuff (create instance of reddit and login)
-user_agent = "MagicAlliance v1.2 by /u/iforgot120" #Change user agent string when saving test copy
+user_agent = "MagicAlliance v2.0 by /u/iforgot120" #Change user agent string when saving test copy
 
 def new_reddit(user_agent):
     try:
         return praw.Reddit(user_agent = user_agent)
-    except urllib.error.HTTPERROR:
+    except urllib.error.URLError as e:
+        pprint("Encountered error: " + e.code + " when attempting to create a reddit instance.")
         time.sleep(time_delay)
         return new_reddit(user_agent)
 
 r = new_reddit(user_agent = user_agent)
-r.login(REDDIT_USERNAME, REDDIT_PASS)
+
+def attempt_login():
+    try:
+        r.login(REDDIT_USERNAME, REDDIT_PASS)
+    except urllib.error.URLError as e:
+        pprint("Encountered error: " + e.code + " when attempting to login to reddit.")
+        time.sleep(time_delay)
+        attempt_login()
 
 #If a_trick_is.txt isn't in the folder
 if not os.path.isfile(os.path.join('docs', 'a_trick_is.txt')):
@@ -78,41 +86,74 @@ def okay_to_reply(reddit_comment, trick_found):
 def try_reply(reddit_comment, trick_found):
     try:
         return okay_to_reply(reddit_comment, trick_found)
-    except urllib.error.HTTPERROR:
+    except urllib.error.URLError as e:
+        pprint("Encountered error: " + e.code + " when attempting to reply to a comment.")
         time.sleep(time_delay)
-        r.send_message('iforgot120', 'MagicAlliance has encountered an HTTPERROR', 'Check to see if it\'s shut down or something.')
+        r.send_message('iforgot120', 'MagicAlliance has encountered an HTTPERROR', 'Error ' + e.code + '\n\nCheck to see if it\'s shut down or something.')
         return try_reply(reddit_comment, trick_found)
-    
-while True:
-    #twiddle = 0
-    #done_already = 0
-    #Looking at all new posts
-    for comment in r.get_comments('all', limit=get_limits):
-        #List of strings with each sentence containing the word (if any)
-        num_replied_to = 0
-        trick_sentences = find_trick_sentences(comment.body)
-        my_reply = ""
-        reply_okay = try_reply(comment, trick_sentences)
-        if reply_okay:
-            #twiddle += 1
-            plural = False
-            for sentence in trick_sentences:
-                sentence = sentence.replace('\n', ' ').strip()
-                def_num = randint(0, len(a_trick_is) - 1)
-                tokenized = nltk.pos_tag(word_tokenize(sentence))
-                if ('trick', 'NN') in tokenized or ('tricks', 'NNS') in tokenized:
-                    plural = ('tricks', 'NNS') in tokenized if not plural else plural
-                    my_reply += "> " + sentence + "\n\n"
-            my_reply += "Illusion" + ("s" if plural else "") + ", /u/" + comment.author.name + ". " + ("Tricks are " if plural else "A trick is ") + a_trick_is[def_num]
-            comment.reply(my_reply)
-            
-            pprint("Comment ID: " + comment.id + "\n" + my_reply + "\n\n----------")
-            num_replied_to += 1
-            comments_replied_to.append(comment.id)
-            with open (os.path.join('docs', 'comments_replied_to.txt'), 'a') as f:
-                f.write(comment.id + '\n')
-        #done_already += 1 if comment.id in comments_replied_to else 0
-        pprint("Number of comments replied to in that cycle: " + str(num_replied_to))
-    #get_limits -= int(done_already / 2)
-    #time_delay = (time_delay + twiddle) / 2
-    time.sleep(time_delay) #make sleep time larger once it's actually on a server
+        
+def get_reddit_comments(sub, limit):
+    try:
+        return r.get_comments(sub, limit = limit)
+    except urllib.error.URLError as e:
+        pprint("Encountered error: " + e.code + " when attempting to retrieve reddit comments.")
+        time.sleep(time_delay)
+        return get_reddit_comments(sub, limit = limit)
+        
+def reply_comment(comment, to_reply):
+    try:
+        comment.reply(to_reply)
+    except urllib.error.URLError as e:
+        pprint("Encountered error: " + e.code + " when attempting to reply to a comment.")
+        time.sleep(time_delay)
+        reply_comment(comment, to_reply)
+        
+def get_author(comment):
+    try:
+        return comment.author.name
+    except urllib.error.URLError as e:
+        pprint("Encountered error: " + e.code + " when attempting retrieve a comment author's username.")
+        time.sleep(time_delay)
+        return get_author(comment)
+
+def run_script():
+    try:
+        while True:
+            #twiddle = 0
+            #done_already = 0
+            #Looking at all new posts
+            for comment in get_reddit_comments('all', limit=get_limits):
+                #List of strings with each sentence containing the word (if any)
+                num_replied_to = 0
+                trick_sentences = find_trick_sentences(comment.body)
+                my_reply = ""
+                reply_okay = try_reply(comment, trick_sentences)
+                if reply_okay:
+                    #twiddle += 1
+                    plural = False
+                    for sentence in trick_sentences:
+                        sentence = sentence.replace('\n', ' ').strip()
+                        def_num = randint(0, len(a_trick_is) - 1)
+                        tokenized = nltk.pos_tag(word_tokenize(sentence))
+                        if ('trick', 'NN') in tokenized or ('tricks', 'NNS') in tokenized:
+                            plural = ('tricks', 'NNS') in tokenized if not plural else plural
+                            my_reply += "> " + sentence + "\n\n"
+                    my_reply += "Illusion" + ("s" if plural else "") + ", /u/" + get_author(comment) + ". " + ("Tricks are " if plural else "A trick is ") + a_trick_is[def_num]
+                    reply_comment(comment, my_reply)
+                    
+                    pprint("Comment ID: " + comment.id + "\n" + my_reply + "\n\n----------")
+                    num_replied_to += 1
+                    comments_replied_to.append(comment.id)
+                    with open (os.path.join('docs', 'comments_replied_to.txt'), 'a') as f:
+                        f.write(comment.id + '\n')
+                #done_already += 1 if comment.id in comments_replied_to else 0
+                pprint("Number of comments replied to in that cycle: " + str(num_replied_to))
+            #get_limits -= int(done_already / 2)
+            #time_delay = (time_delay + twiddle) / 2
+            time.sleep(time_delay) #make sleep time larger once it's actually on a server
+    except urllib.error.URLError as e:
+        pprint("Encountered error: " + e.code + " while running main loop.")
+        time.sleep(time_delay * 1200)
+        run_script()
+
+run_script()
