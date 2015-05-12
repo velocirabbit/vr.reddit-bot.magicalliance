@@ -72,6 +72,7 @@ def try_reply(reddit_comment, trick_found):
         return okay_to_reply(reddit_comment, trick_found)
     except urllib2.HTTPERROR:
         time.sleep(time_delay)
+        r.send_message('iforgot120', 'MagicAlliance has encountered an HTTPERROR', 'Check to see if it\'s shut down or something.')
         try_reply(reddit_comment, trick_found)
     
 while True:
@@ -94,7 +95,7 @@ while True:
                 if ('trick', 'NN') in tokenized or ('tricks', 'NNS') in tokenized:
                     plural = ('tricks', 'NNS') in tokenized if not plural else plural
                     my_reply += "> " + sentence + "\n\n"
-            my_reply += "Illusion" + ("s" if plural else "") + ", " + comment.author.name + ". " + ("Tricks are " if plural else "A trick is ") + a_trick_is[def_num]
+            my_reply += "Illusion" + ("s" if plural else "") + ", /u/" + comment.author.name + ". " + ("Tricks are " if plural else "A trick is ") + a_trick_is[def_num]
             comment.reply(my_reply)
             
             pprint("Comment ID: " + comment.id + "\n" + my_reply + "\n\n----------")
