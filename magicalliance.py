@@ -70,7 +70,7 @@ def okay_to_reply(reddit_comment, trick_found):
 def try_reply(reddit_comment, trick_found):
     try:
         return okay_to_reply(reddit_comment, trick_found)
-    except urllib2.HTTPERROR:
+    except urllib.error.HTTPERROR:
         time.sleep(time_delay)
         r.send_message('iforgot120', 'MagicAlliance has encountered an HTTPERROR', 'Check to see if it\'s shut down or something.')
         try_reply(reddit_comment, trick_found)
