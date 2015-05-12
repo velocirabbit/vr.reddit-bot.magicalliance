@@ -1,13 +1,13 @@
 import time #Time module
 import re #Regular expressions module
 import os #Miscellaneous OS interface module
-import urllib.error #Python URL/HTTP errors class
 
 import nltk #Natural Language Toolkit
 import praw #Python Reddit API Wrapper module
 import numpy #Numerical Python
 
 from config_bot import *
+from urllib.error import * #Python URL/HTTP errors class
 from nltk import word_tokenize
 from pprint import pprint #pprint method from PrettyPrint module
 from random import randint #to select a random "definition" of what a trick is
