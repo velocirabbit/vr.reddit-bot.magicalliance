@@ -107,6 +107,9 @@ def reply_comment(comment, to_reply):
         pprint("Encountered error: " + e.code + " when attempting to reply to a comment.")
         time.sleep(time_delay)
         reply_comment(comment, to_reply)
+    except (praw.errors.LoginOrScopeRequired, praw.errors.LoginRequired) as e:
+        attempt_login()
+        comment.reply(to_reply)
         
 def get_author(comment):
     try:
