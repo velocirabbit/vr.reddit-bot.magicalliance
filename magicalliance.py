@@ -34,7 +34,7 @@ def new_reddit(user_agent):
     try:
         return praw.Reddit(user_agent = user_agent)
     except urllib.error.URLError as e:
-        pprint("Encountered error: " + e.code + " when attempting to create a reddit instance.")
+        pprint("Encountered error: " + e.code + " when attempting to create a reddit instance. Trying again...")
         time.sleep(time_delay)
         return new_reddit(user_agent)
 
@@ -47,6 +47,8 @@ def attempt_login():
         pprint("Encountered error: " + e.code + " when attempting to login to reddit.")
         time.sleep(time_delay)
         attempt_login()
+        
+attempt_login()
 
 #If a_trick_is.txt isn't in the folder
 if not os.path.isfile(os.path.join('docs', 'a_trick_is.txt')):
@@ -78,15 +80,23 @@ def find_trick_sentences(comment_text):
     """
     reg_ex = re.compile(r'[^.?!]*\btricks?\b[^.?!]*[.?!]*', flags=re.IGNORECASE) #All sentences with 'trick' or 'tricks'
     return nltk.regexp_tokenize(comment_text, reg_ex) #Tokenizes the sentences. Works a bit better than re.findall()
+    
+def try_get_parent(comment):
+    try:
+        return r.get_info(thing_id = comment.parent_id)
+    except urllib.error.URLError as e:
+        pprint("Encountered error: " + e.code + "when attempting to check parent comment of ID " + comment.id + ". Trying again...")
+        time.sleep(time_delay)
+        return try_get_parent(comment)
 
 def okay_to_reply(reddit_comment, trick_found):
     commented = reddit_comment.id in comments_replied_to
     parented = False
     if not reddit_comment.is_root:
-        parent = r.get_info(thing_id = reddit_comment.parent_id)
+        parent = try_get_parent(reddit_comment)
         parented = parent.id in comments_replied_to
         if not parented and not parent.is_root:
-            grandparent = r.get_info(thing_id = parent.parent_id)
+            grandparent = try_get_parent(parent)
             parented = grandparent.id in comments_replied_to
     return not commented and trick_found and not parented
     
