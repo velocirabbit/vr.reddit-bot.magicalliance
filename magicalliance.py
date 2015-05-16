@@ -6,11 +6,21 @@ import urllib.request #Python URL/HTTP errors class
 import nltk #Natural Language Toolkit
 import praw #Python Reddit API Wrapper module
 import numpy #Numerical Python
+import boto #boto's Amazon S3 package
+import boto.s3.connection
 
 from config_bot import *
 from nltk import word_tokenize
 from pprint import pprint #pprint method from PrettyPrint module
 from random import randint #to select a random "definition" of what a trick is
+from boto.s3.key import Key #S3 Bucket Key object class
+
+c = boto.s3.connect_to_region('us-east-1', calling_format = boto.s3.connection.OrdinaryCallingFormat())
+bucket_name = 'vr.reddit-bot.magicalliance'
+bucket = c.create_bucket(bucket_name)
+
+s3_commented = Key(bucket)
+s3_commented.key = 'docs/comments_replied_to.txt'
 
 #If config_bot.py isn't in the folder
 if not os.path.isfile('config_bot.py'):
@@ -48,7 +58,6 @@ else:
         #Create an array of strings that describe what a trick is by splitting up the string into an array based on \n, then removing empty elements
         a_trick_is = f.read()
         a_trick_is = a_trick_is.split('\n')
-        #a_trick_is = filter(None, a_trick_is)
 
 #Check the comments_replied_to.txt to see which posts have been covered already (useful in case of restarts)
 if not os.path.isfile(os.path.join('docs', 'comments_replied_to.txt')):
@@ -61,7 +70,6 @@ else:
         #Set the array to the entire contents of the .txt, split the string into an array based on \n, then remove empty elements
         comments_replied_to = f.read()
         comments_replied_to = comments_replied_to.split('\n')
-        #comments_replied_to = filter(None, comments_replied_to)
 
 def find_trick_sentences(comment_text):
     """
@@ -72,7 +80,6 @@ def find_trick_sentences(comment_text):
     return nltk.regexp_tokenize(comment_text, reg_ex) #Tokenizes the sentences. Works a bit better than re.findall()
 
 def okay_to_reply(reddit_comment, trick_found):
-    #assert type(reddit_comment) == praw.objects.Comment
     commented = reddit_comment.id in comments_replied_to
     parented = False
     if not reddit_comment.is_root:
@@ -119,11 +126,9 @@ def get_author(comment):
         time.sleep(time_delay)
         return get_author(comment)
 
-def run_script():
+def main():
     try:
         while True:
-            #twiddle = 0
-            #done_already = 0
             #Looking at all new posts
             for comment in get_reddit_comments('all', limit=get_limits):
                 #List of strings with each sentence containing the word (if any)
@@ -132,7 +137,6 @@ def run_script():
                 my_reply = ""
                 reply_okay = try_reply(comment, trick_sentences)
                 if reply_okay:
-                    #twiddle += 1
                     plural = False
                     for sentence in trick_sentences:
                         sentence = sentence.replace('\n', ' ').strip()
@@ -149,14 +153,13 @@ def run_script():
                     comments_replied_to.append(comment.id)
                     with open (os.path.join('docs', 'comments_replied_to.txt'), 'a') as f:
                         f.write(comment.id + '\n')
-                #done_already += 1 if comment.id in comments_replied_to else 0
+                    s3_commented.set_contents_from_filename(os.path.join('docs', 'comments_replied_to.txt'))
                 pprint("Number of comments replied to in that cycle: " + str(num_replied_to))
-            #get_limits -= int(done_already / 2)
-            #time_delay = (time_delay + twiddle) / 2
             time.sleep(time_delay) #make sleep time larger once it's actually on a server
     except urllib.error.URLError as e:
         pprint("Encountered error: " + e.code + " while running main loop.")
         time.sleep(time_delay * 1200)
-        run_script()
+        main()
 
-run_script()
+if __name__ == '__main__':
+  main()
