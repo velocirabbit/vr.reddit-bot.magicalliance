@@ -143,21 +143,20 @@ def main():
             for comment in get_reddit_comments('all', limit=get_limits):
                 #List of strings with each sentence containing the word (if any)
                 num_replied_to = 0
-                trick_sentences = find_trick_sentences(comment.body)
                 my_reply = ""
-                reply_okay = try_reply(comment, trick_sentences)
-                if reply_okay:
-                    plural = False
-                    for sentence in trick_sentences:
+                trick_sentences = find_trick_sentences(comment.body)
+                plural = False
+                for sentence in trick_sentences:
                         sentence = sentence.replace('\n', ' ').strip()
                         def_num = randint(0, len(a_trick_is) - 1)
                         tokenized = nltk.pos_tag(word_tokenize(sentence))
                         if ('trick', 'NN') in tokenized or ('tricks', 'NNS') in tokenized:
                             plural = ('tricks', 'NNS') in tokenized if not plural else plural
                             my_reply += "> " + sentence + "\n\n"
+                reply_okay = try_reply(comment, trick_sentences)
+                if reply_okay and my_reply != "":
                     my_reply += "Illusion" + ("s" if plural else "") + ", /u/" + get_author(comment) + ". " + ("Tricks are " if plural else "A trick is ") + a_trick_is[def_num]
                     reply_comment(comment, my_reply)
-                    
                     pprint("Comment ID: " + comment.id + "\n" + my_reply + "\n\n----------")
                     num_replied_to += 1
                     comments_replied_to.append(comment.id)
